@@ -1,0 +1,39 @@
+$kind: http-example
+name: Content-Type must be application/json.
+request:
+  url: "{{baseUrl}}/api/v1/locations"
+  method: POST
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "trackerId": "tracker-001",
+        "latitude": 14.676,
+        "longitude": 121.0437,
+        "reportedAt": "2026-10-17T08:30:00Z",
+        "accuracyMeters": 8,
+        "batteryPercent": 82,
+        "messageId": "fix-001",
+        "source": "ESP32"
+      }
+response:
+  statusCode: 415
+  statusText: Unsupported Media Type
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": {
+          "code": "UNSUPPORTED_MEDIA_TYPE",
+          "message": "Expected application/json."
+        }
+      }
+order: 7000

@@ -1,0 +1,51 @@
+$kind: http-example
+name: Updated tracker.
+request:
+  url: "{{baseUrl}}/api/v1/trackers/:id"
+  method: PATCH
+  headers:
+    - key: authjs.session-token
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: id
+      value: string
+      disabled: false
+      description: (Required) Foreign-owner and nonexistent IDs both yield 404 for owner endpoints.
+  body:
+    type: json
+    content: |-
+      {
+        "name": "Motorcycle",
+        "type": "ESP32",
+        "reportingMode": "INTERVAL",
+        "expectedIntervalSeconds": 30
+      }
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "expectedIntervalSeconds": 79753,
+        "id": "string",
+        "latestLocation": {
+          "latitude": 80.32708479557186,
+          "longitude": -90.17308604903519,
+          "reportedAt": "1955-11-15T06:44:08.671Z",
+          "receivedAt": "1956-01-25T00:54:56.684Z",
+          "source": "WATCH_PHONE_ASSISTED",
+          "accuracyMeters": 949.8309739865363,
+          "batteryPercent": 22.74719108827412,
+          "speedMps": 3532.12803369388
+        },
+        "name": "string",
+        "reportingMode": "ON_DEMAND",
+        "type": "ESP32"
+      }
+order: 1000

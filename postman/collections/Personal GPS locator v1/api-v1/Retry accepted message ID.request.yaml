@@ -1,0 +1,32 @@
+$kind: http-request
+description: Run immediately after Submit one observed GPS fix; changing the retry body must not change the stored fix.
+url: '{{baseUrl}}/api/v1/locations'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "trackerId": "{{trackerId}}",
+      "latitude": 15,
+      "longitude": 121.0437,
+      "reportedAt": "{{fixReportedAt}}",
+      "messageId": "{{fixMessageId}}",
+      "source": "ESP32"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: '{{bearerToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Retry returns the original point without inserting a new one', () => {
+        pm.response.to.have.status(200);
+        const body = pm.response.json();
+        pm.expect(body.duplicate).to.equal(true);
+        pm.expect(body.id).to.equal(pm.collectionVariables.get('fixId'));
+      });
+order: 2500

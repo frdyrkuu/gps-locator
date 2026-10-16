@@ -1,0 +1,25 @@
+$kind: http-request
+description: |
+  Only observations within the last seven days, newest first by reportedAt
+  then ID. A cursor is opaque; pass nextCursor verbatim for the next page.
+url: '{{baseUrl}}/api/v1/trackers/:id/locations?limit=50'
+method: GET
+headers:
+  Accept: application/json
+  Cookie: '{{sessionCookieName}}={{ownerSessionCookie}}'
+queryParams:
+  - key: cursor
+    value: '{{cursor}}'
+    disabled: true
+    description: Opaque cursor returned by the previous page.
+  - key: limit
+    value: "50"
+    disabled: false
+pathVariables:
+  - key: id
+    value: '{{trackerId}}'
+    disabled: false
+    description: (Required) Foreign-owner and nonexistent IDs both yield 404 for owner endpoints.
+settings: {}
+examples: ./.resources/Recent history for one owned tracker.resources/examples
+order: 4000

@@ -1,0 +1,39 @@
+$kind: http-example
+name: Valid token but wrong tracker ID or source; do not retry unchanged.
+request:
+  url: "{{baseUrl}}/api/v1/locations"
+  method: POST
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "trackerId": "tracker-001",
+        "latitude": 14.676,
+        "longitude": 121.0437,
+        "reportedAt": "2026-10-17T08:30:00Z",
+        "accuracyMeters": 8,
+        "batteryPercent": 82,
+        "messageId": "fix-001",
+        "source": "ESP32"
+      }
+response:
+  statusCode: 403
+  statusText: Forbidden
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "Tracker or source mismatch."
+        }
+      }
+order: 5000

@@ -1,0 +1,20 @@
+$kind: collection
+description: |
+  Phase 0 contract for the planned v1 API; handlers are implemented in later
+  phases. The owner session and device bearer token are separate credentials.
+  Never place tokens in URLs. JSON timestamps are UTC ISO 8601. Responses
+  containing owner data or credentials must not be cached by shared caches.
+variables:
+  - key: baseUrl
+    value: http://localhost:3000
+  - key: sessionCookieName
+    value: gps-locator.session-token
+    description: App-specific Auth.js session cookie; Secure on HTTPS.
+  - key: ownerSessionCookie
+    value: ""
+    description: Supply via a local secret environment, never commit a live session.
+  - key: bearerToken
+    value: ""
+    description: Supply via a local secret environment after token issuance.
+  - key: trackerId
+    value: tracker-001

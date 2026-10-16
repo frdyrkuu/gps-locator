@@ -1,0 +1,29 @@
+$kind: http-request
+description: Contract fixture; out-of-range latitude cannot create a location.
+url: '{{baseUrl}}/api/v1/locations'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "trackerId": "{{trackerId}}",
+      "latitude": 91,
+      "longitude": 121.0437,
+      "reportedAt": "{{$isoTimestamp}}",
+      "source": "ESP32"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: '{{bearerToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Out-of-range latitude is rejected', () => {
+        pm.response.to.have.status(400);
+        pm.expect(pm.response.json().error.code).to.equal('VALIDATION_ERROR');
+      });
+order: 3000

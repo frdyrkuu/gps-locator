@@ -1,0 +1,63 @@
+$kind: http-example
+name: Bounded page of owned location points.
+request:
+  url: "{{baseUrl}}/api/v1/trackers/:id/locations?cursor=string&limit=50"
+  method: GET
+  headers:
+    - key: authjs.session-token
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: Accept
+      value: application/json
+  queryParams:
+    cursor: string
+    limit: "50"
+  pathVariables:
+    - key: id
+      value: string
+      disabled: false
+      description: (Required) Foreign-owner and nonexistent IDs both yield 404 for owner endpoints.
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Cache-Control: no-store
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "id": "string",
+            "latitude": -6.625241967849433,
+            "longitude": -78.84686420671642,
+            "receivedAt": "1999-11-26T06:19:24.771Z",
+            "reportedAt": "1968-09-09T18:21:39.133Z",
+            "source": "ESP32",
+            "trackerId": "string",
+            "accuracyMeters": 8595.557997468859,
+            "batteryPercent": 7.84880539868027,
+            "speedMps": 3189.6720197983086,
+            "messageId": "string"
+          },
+          {
+            "id": "string",
+            "latitude": 77.56097997073084,
+            "longitude": 28.49384279921651,
+            "receivedAt": "1984-09-04T21:45:45.701Z",
+            "reportedAt": "1969-06-16T13:55:19.299Z",
+            "source": "ESP32",
+            "trackerId": "string",
+            "accuracyMeters": 259.14841098710895,
+            "batteryPercent": 25.526048173196614,
+            "speedMps": 5231.08652792871,
+            "messageId": "string"
+          }
+        ],
+        "nextCursor": "string"
+      }
+order: 1000

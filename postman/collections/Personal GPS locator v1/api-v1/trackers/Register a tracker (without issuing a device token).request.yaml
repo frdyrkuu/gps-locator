@@ -1,0 +1,20 @@
+$kind: http-request
+description: ""
+url: "{{baseUrl}}/api/v1/trackers"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Cookie: '{{sessionCookieName}}={{ownerSessionCookie}}'
+body:
+  type: json
+  content: |-
+    {
+      "name": "Motorcycle",
+      "type": "ESP32",
+      "reportingMode": "INTERVAL",
+      "expectedIntervalSeconds": 30
+    }
+settings: {}
+examples: ./.resources/Register a tracker (without issuing a device token).resources/examples
+order: 2000

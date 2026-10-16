@@ -1,0 +1,105 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TrackerType {
+  ESP32
+  IPHONE
+  APPLE_WATCH
+}
+
+enum ReportingMode {
+  INTERVAL
+  ON_DEMAND
+}
+
+enum LocationSource {
+  ESP32
+  IPHONE_SHORTCUT
+  WATCH_PHONE_ASSISTED
+}
+
+model User {
+  id           String    @id @default("owner")
+  email        String    @unique @db.VarChar(320)
+  passwordHash String    @db.VarChar(255)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  trackers     Tracker[]
+}
+
+model LoginAttempt {
+  key         String   @id @db.Char(64)
+  attempts    Int
+  windowStart DateTime @db.Timestamptz(3)
+
+  @@index([windowStart])
+}
+
+model Tracker {
+  id                      String             @id @default(cuid())
+  ownerId                 String
+  owner                   User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name                    String             @db.VarChar(100)
+  type                    TrackerType
+  reportingMode           ReportingMode
+  expectedIntervalSeconds Int?
+  createdAt               DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime           @updatedAt @db.Timestamptz(3)
+  credentials             DeviceCredential[]
+  locations               LocationPoint[]
+  latestLocation          LatestLocation?
+
+  @@index([ownerId])
+}
+
+model DeviceCredential {
+  id          String    @id @default(cuid())
+  trackerId   String
+  tracker     Tracker   @relation(fields: [trackerId], references: [id], onDelete: Cascade)
+  tokenId     String    @unique @db.VarChar(64)
+  tokenDigest String    @db.Char(64)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  revokedAt   DateTime? @db.Timestamptz(3)
+
+  @@index([trackerId])
+}
+
+model LocationPoint {
+  id             String         @id @default(cuid())
+  trackerId      String
+  tracker        Tracker        @relation(fields: [trackerId], references: [id], onDelete: Cascade)
+  latitude       Float
+  longitude      Float
+  reportedAt     DateTime       @db.Timestamptz(3)
+  receivedAt     DateTime       @default(now()) @db.Timestamptz(3)
+  accuracyMeters Float?
+  batteryPercent Float?
+  speedMps       Float?
+  messageId      String?        @db.VarChar(128)
+  source         LocationSource
+
+  @@unique([trackerId, messageId])
+  @@index([trackerId, reportedAt(sort: Desc), id(sort: Desc)])
+  @@index([receivedAt])
+}
+
+model LatestLocation {
+  trackerId      String         @id
+  tracker        Tracker        @relation(fields: [trackerId], references: [id], onDelete: Cascade)
+  // Keep the chosen point ID as a tie-breaker without an FK: history is pruned.
+  pointId        String
+  latitude       Float
+  longitude      Float
+  reportedAt     DateTime       @db.Timestamptz(3)
+  receivedAt     DateTime       @db.Timestamptz(3)
+  accuracyMeters Float?
+  batteryPercent Float?
+  speedMps       Float?
+  source         LocationSource
+}

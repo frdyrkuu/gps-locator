@@ -1,0 +1,51 @@
+$kind: http-request
+description: |
+  Bearer token authenticates exactly one tracker. The trackerId and source
+  must match the credential's tracker and device type. Accept reportedAt no
+  more than seven days before or five minutes after server time. An older
+  accepted fix enters history but never moves a newer latest snapshot
+  backwards. Retry the same messageId safely; an already accepted ID does
+  not mutate a stored fix even when the retry body differs. A watch report
+  is phone-assisted, not an independently measured watch position.
+url: "{{baseUrl}}/api/v1/locations"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "trackerId": "{{trackerId}}",
+      "latitude": 14.676,
+      "longitude": 121.0437,
+      "reportedAt": "{{fixReportedAt}}",
+      "accuracyMeters": 8,
+      "batteryPercent": 82,
+      "messageId": "{{fixMessageId}}",
+      "source": "ESP32"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{bearerToken}}"
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.collectionVariables.set('fixReportedAt', new Date().toISOString());
+      pm.collectionVariables.set('fixMessageId', pm.variables.replaceIn('{{$guid}}'));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('First submission creates a point', () => {
+        pm.response.to.have.status(201);
+        const body = pm.response.json();
+        pm.expect(body.id).to.be.a('string').and.not.empty;
+        pm.expect(Date.parse(body.receivedAt)).to.not.be.NaN;
+        pm.expect(body.duplicate).to.be.undefined;
+        pm.collectionVariables.set('fixId', body.id);
+      });
+settings: {}
+examples: ./.resources/Submit one observed GPS fix.resources/examples
+order: 2000

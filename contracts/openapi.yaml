@@ -1,0 +1,369 @@
+openapi: 3.0.3
+info:
+  title: Personal GPS locator API
+  version: 1.0.0
+  description: |
+    Phase 3 v1 API. The owner session and device bearer token are separate credentials.
+    Never place tokens in URLs. JSON timestamps are UTC ISO 8601. Responses
+    containing owner data or credentials must not be cached by shared caches.
+servers:
+  - url: http://localhost:3000
+    description: Local development only; use HTTPS outside local development.
+tags:
+  - name: Trackers
+  - name: Locations
+paths:
+  /api/v1/trackers:
+    get:
+      tags: [Trackers]
+      summary: List the owner's trackers and last-known snapshots
+      security: [{ ownerSession: [] }]
+      responses:
+        '200':
+          description: Owned trackers only; credentials are never included.
+          headers:
+            Cache-Control:
+              schema: { type: string, example: no-store }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Tracker' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Trackers]
+      summary: Register a tracker (without issuing a device token)
+      security: [{ ownerSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TrackerInput' }
+            example:
+              name: Motorcycle
+              type: ESP32
+              reportingMode: INTERVAL
+              expectedIntervalSeconds: 30
+      responses:
+        '201':
+          description: Created tracker; no token or location yet.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tracker' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+  /api/v1/trackers/{id}:
+    parameters:
+      - $ref: '#/components/parameters/TrackerId'
+    patch:
+      tags: [Trackers]
+      summary: Update tracker settings
+      description: Supply all mutable settings; validate the resulting settings together.
+      security: [{ ownerSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TrackerInput' }
+            example:
+              name: Motorcycle
+              type: ESP32
+              reportingMode: INTERVAL
+              expectedIntervalSeconds: 30
+      responses:
+        '200':
+          description: Updated tracker.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tracker' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+    delete:
+      tags: [Trackers]
+      summary: Delete tracker, credentials, latest snapshot and history
+      security: [{ ownerSession: [] }]
+      responses:
+        '204': { description: Deleted; no response body. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/trackers/{id}/credentials:
+    parameters:
+      - $ref: '#/components/parameters/TrackerId'
+    post:
+      tags: [Trackers]
+      summary: Issue or rotate the tracker ingest credential
+      description: Atomically revoke previous tokens; the new raw token is returned once.
+      security: [{ ownerSession: [] }]
+      responses:
+        '201':
+          description: Copy now; subsequent GET responses never contain the token.
+          headers:
+            Cache-Control:
+              schema: { type: string, example: no-store }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [token]
+                properties:
+                  token:
+                    type: string
+                    description: '<tokenId>.<randomSecret>; example only, not a working token.'
+                    example: 'token-id.random-secret-shown-once'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Trackers]
+      summary: Revoke all active ingest tokens for a tracker
+      security: [{ ownerSession: [] }]
+      responses:
+        '204': { description: Revoked; no response body. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/trackers/{id}/locations:
+    parameters:
+      - $ref: '#/components/parameters/TrackerId'
+    get:
+      tags: [Locations]
+      summary: Recent history for one owned tracker
+      description: |
+        Only observations within the last seven days, newest first by reportedAt
+        then ID. A cursor is opaque; pass nextCursor verbatim for the next page.
+      security: [{ ownerSession: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+          description: Opaque cursor returned by the previous page.
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200':
+          description: Bounded page of owned location points.
+          headers:
+            Cache-Control:
+              schema: { type: string, example: no-store }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items, nextCursor]
+                properties:
+                  items:
+                    type: array
+                    maxItems: 100
+                    items: { $ref: '#/components/schemas/LocationPoint' }
+                  nextCursor: { type: string, nullable: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/locations:
+    post:
+      tags: [Locations]
+      summary: Submit one observed GPS fix
+      description: |
+        Bearer token authenticates exactly one tracker. The trackerId and source
+        must match the credential's tracker and device type. Accept reportedAt no
+        more than seven days before or five minutes after server time. An older
+        accepted fix enters history but never moves a newer latest snapshot
+        backwards. Retry the same messageId safely; an already accepted ID does
+        not mutate a stored fix even when the retry body differs. A watch report
+        is phone-assisted, not an independently measured watch position. HTTPS
+        is required except on localhost (HTTP otherwise returns 403 HTTPS_REQUIRED).
+      security: [{ deviceToken: [] }]
+      requestBody:
+        required: true
+        description: JSON only, maximum 4096 bytes (UTF-8 encoded body).
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IngestInput' }
+            example:
+              trackerId: tracker-001
+              latitude: 14.676
+              longitude: 121.0437
+              reportedAt: '2026-10-17T08:30:00Z'
+              accuracyMeters: 8
+              batteryPercent: 82
+              messageId: fix-001
+              source: ESP32
+      responses:
+        '201':
+          description: New point saved and latest snapshot conditionally advanced.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IngestReceipt' }
+              example: { id: location-001, receivedAt: '2026-10-17T08:30:02Z' }
+        '200':
+          description: Duplicate messageId; no new point or snapshot change.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/IngestReceipt'
+                  - type: object
+                    required: [duplicate]
+                    properties:
+                      duplicate: { type: boolean, enum: [true] }
+              example: { id: location-001, receivedAt: '2026-10-17T08:30:02Z', duplicate: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+components:
+  securitySchemes:
+    ownerSession:
+      type: apiKey
+      in: cookie
+      name: gps-locator.session-token
+      description: App-specific Auth.js session cookie; the Secure attribute is set on HTTPS.
+    deviceToken:
+      type: http
+      scheme: bearer
+      description: Per-tracker token issued once by the credentials endpoint.
+  parameters:
+    TrackerId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+      description: Foreign-owner and nonexistent IDs both yield 404 for owner endpoints.
+  schemas:
+    TrackerInput:
+      type: object
+      additionalProperties: false
+      required: [name, type, reportingMode, expectedIntervalSeconds]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100, description: Trimmed; must not be blank. }
+        type: { type: string, enum: [ESP32, IPHONE, APPLE_WATCH] }
+        reportingMode: { type: string, enum: [INTERVAL, ON_DEMAND] }
+        expectedIntervalSeconds: { type: integer, minimum: 10, maximum: 86400, nullable: true, description: Required for INTERVAL; null for ON_DEMAND. }
+    Tracker:
+      allOf:
+        - $ref: '#/components/schemas/TrackerInput'
+        - type: object
+          required: [id, latestLocation]
+          properties:
+            id: { type: string }
+            latestLocation:
+              nullable: true
+              allOf: [{ $ref: '#/components/schemas/LatestLocation' }]
+    LatestLocation:
+      type: object
+      required: [latitude, longitude, reportedAt, receivedAt, source]
+      properties:
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        reportedAt: { type: string, format: date-time }
+        receivedAt: { type: string, format: date-time }
+        source: { type: string, enum: [ESP32, IPHONE_SHORTCUT, WATCH_PHONE_ASSISTED] }
+        accuracyMeters: { type: number, minimum: 0, nullable: true }
+        batteryPercent: { type: number, minimum: 0, maximum: 100, nullable: true }
+        speedMps: { type: number, minimum: 0, nullable: true }
+    IngestInput:
+      type: object
+      additionalProperties: false
+      required: [trackerId, latitude, longitude, reportedAt, source]
+      properties:
+        trackerId: { type: string, minLength: 1 }
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        reportedAt: { type: string, format: date-time, description: UTC observation time. }
+        accuracyMeters: { type: number, minimum: 0 }
+        batteryPercent: { type: number, minimum: 0, maximum: 100 }
+        speedMps: { type: number, minimum: 0 }
+        messageId: { type: string, minLength: 1, maxLength: 128, description: Unique per tracker when present. }
+        source: { type: string, enum: [ESP32, IPHONE_SHORTCUT, WATCH_PHONE_ASSISTED] }
+    IngestReceipt:
+      type: object
+      additionalProperties: false
+      required: [id, receivedAt]
+      properties:
+        id: { type: string }
+        receivedAt: { type: string, format: date-time }
+    LocationPoint:
+      type: object
+      required: [id, trackerId, latitude, longitude, reportedAt, receivedAt, source]
+      properties:
+        id: { type: string }
+        trackerId: { type: string }
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        reportedAt: { type: string, format: date-time }
+        receivedAt: { type: string, format: date-time }
+        source: { type: string, enum: [ESP32, IPHONE_SHORTCUT, WATCH_PHONE_ASSISTED] }
+        accuracyMeters: { type: number, minimum: 0, nullable: true }
+        batteryPercent: { type: number, minimum: 0, maximum: 100, nullable: true }
+        speedMps: { type: number, minimum: 0, nullable: true }
+        messageId: { type: string, nullable: true }
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+  responses:
+    BadRequest:
+      description: Invalid JSON, fields, limits, or observation time; do not retry unchanged.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: VALIDATION_ERROR, message: Invalid location payload. } }
+    Unauthorized:
+      description: Missing or invalid credential; do not disclose whether an account or token exists.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: UNAUTHORIZED, message: Authentication required. } }
+    Forbidden:
+      description: Valid token but wrong tracker ID or source; do not retry unchanged.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: FORBIDDEN, message: Tracker or source mismatch. } }
+    NotFound:
+      description: Unknown or non-owned tracker ID.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: NOT_FOUND, message: Tracker not found. } }
+    TooLarge:
+      description: JSON body exceeds 4096 bytes.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: PAYLOAD_TOO_LARGE, message: Request body too large. } }
+    UnsupportedMediaType:
+      description: Content-Type must be application/json.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: UNSUPPORTED_MEDIA_TYPE, message: Expected application/json. } }
+    TooManyRequests:
+      description: Ingest rate limit exceeded; wait before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: RATE_LIMITED, message: Try again later. } }

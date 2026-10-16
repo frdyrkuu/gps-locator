@@ -1,0 +1,4 @@
+workflows:
+  syncSpecToCollection:
+    - spec: ../contracts/openapi.yaml
+      collection: ../postman/collections/Personal GPS locator v1

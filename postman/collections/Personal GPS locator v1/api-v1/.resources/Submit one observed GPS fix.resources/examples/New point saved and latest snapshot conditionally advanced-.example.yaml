@@ -1,0 +1,37 @@
+$kind: http-example
+name: New point saved and latest snapshot conditionally advanced.
+request:
+  url: "{{baseUrl}}/api/v1/locations"
+  method: POST
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "trackerId": "tracker-001",
+        "latitude": 14.676,
+        "longitude": 121.0437,
+        "reportedAt": "2026-10-17T08:30:00Z",
+        "accuracyMeters": 8,
+        "batteryPercent": 82,
+        "messageId": "fix-001",
+        "source": "ESP32"
+      }
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "id": "location-001",
+        "receivedAt": "2026-10-17T08:30:02Z"
+      }
+order: 2000

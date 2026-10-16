@@ -1,0 +1,35 @@
+$kind: http-example
+name: JSON body exceeds 4096 bytes.
+request:
+  url: "{{baseUrl}}/api/v1/trackers"
+  method: POST
+  headers:
+    - key: authjs.session-token
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: Accept
+      value: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "name": "Motorcycle",
+        "type": "ESP32",
+        "reportingMode": "INTERVAL",
+        "expectedIntervalSeconds": 30
+      }
+response:
+  statusCode: 413
+  statusText: Request Entity Too Large
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": {
+          "code": "PAYLOAD_TOO_LARGE",
+          "message": "Request body too large."
+        }
+      }
+order: 4000

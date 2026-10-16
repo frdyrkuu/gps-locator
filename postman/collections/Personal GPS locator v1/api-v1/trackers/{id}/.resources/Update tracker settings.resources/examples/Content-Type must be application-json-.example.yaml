@@ -1,0 +1,40 @@
+$kind: http-example
+name: Content-Type must be application/json.
+request:
+  url: "{{baseUrl}}/api/v1/trackers/:id"
+  method: PATCH
+  headers:
+    - key: authjs.session-token
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: id
+      value: string
+      disabled: false
+      description: (Required) Foreign-owner and nonexistent IDs both yield 404 for owner endpoints.
+  body:
+    type: json
+    content: |-
+      {
+        "name": "Motorcycle",
+        "type": "ESP32",
+        "reportingMode": "INTERVAL",
+        "expectedIntervalSeconds": 30
+      }
+response:
+  statusCode: 415
+  statusText: Unsupported Media Type
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": {
+          "code": "UNSUPPORTED_MEDIA_TYPE",
+          "message": "Expected application/json."
+        }
+      }
+order: 6000

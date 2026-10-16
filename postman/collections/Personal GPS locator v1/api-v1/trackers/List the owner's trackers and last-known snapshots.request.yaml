@@ -1,0 +1,10 @@
+$kind: http-request
+description: ""
+url: "{{baseUrl}}/api/v1/trackers"
+method: GET
+headers:
+  Accept: application/json
+  Cookie: '{{sessionCookieName}}={{ownerSessionCookie}}'
+settings: {}
+examples: ./.resources/List the owner's trackers and last-known snapshots.resources/examples
+order: 1000

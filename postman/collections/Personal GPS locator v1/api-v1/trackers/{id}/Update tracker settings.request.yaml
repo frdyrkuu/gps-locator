@@ -1,0 +1,25 @@
+$kind: http-request
+description: Supply all mutable settings; validate the resulting settings together.
+url: "{{baseUrl}}/api/v1/trackers/:id"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Cookie: '{{sessionCookieName}}={{ownerSessionCookie}}'
+pathVariables:
+  - key: id
+    value: '{{trackerId}}'
+    disabled: false
+    description: (Required) Foreign-owner and nonexistent IDs both yield 404 for owner endpoints.
+body:
+  type: json
+  content: |-
+    {
+      "name": "Motorcycle",
+      "type": "ESP32",
+      "reportingMode": "INTERVAL",
+      "expectedIntervalSeconds": 30
+    }
+settings: {}
+examples: ./.resources/Update tracker settings.resources/examples
+order: 1000

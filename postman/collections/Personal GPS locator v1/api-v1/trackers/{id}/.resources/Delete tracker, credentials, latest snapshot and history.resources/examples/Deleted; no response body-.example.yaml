@@ -1,0 +1,26 @@
+$kind: http-example
+name: Deleted; no response body.
+request:
+  url: "{{baseUrl}}/api/v1/trackers/:id"
+  method: DELETE
+  headers:
+    - key: authjs.session-token
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+  pathVariables:
+    - key: id
+      value: string
+      disabled: false
+      description: (Required) Foreign-owner and nonexistent IDs both yield 404 for owner endpoints.
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 204
+  statusText: No Content
+  headers:
+    Content-Type: text/plain
+  body:
+    type: text
+    content: ""
+order: 1000

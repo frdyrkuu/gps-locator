@@ -1,0 +1,39 @@
+$kind: http-example
+name: JSON body exceeds 4096 bytes.
+request:
+  url: "{{baseUrl}}/api/v1/locations"
+  method: POST
+  headers:
+    - key: Authorization
+      value: Bearer <token>
+      description: "Added as a part of security scheme: bearer"
+    - key: Accept
+      value: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "trackerId": "tracker-001",
+        "latitude": 14.676,
+        "longitude": 121.0437,
+        "reportedAt": "2026-10-17T08:30:00Z",
+        "accuracyMeters": 8,
+        "batteryPercent": 82,
+        "messageId": "fix-001",
+        "source": "ESP32"
+      }
+response:
+  statusCode: 413
+  statusText: Request Entity Too Large
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": {
+          "code": "PAYLOAD_TOO_LARGE",
+          "message": "Request body too large."
+        }
+      }
+order: 6000

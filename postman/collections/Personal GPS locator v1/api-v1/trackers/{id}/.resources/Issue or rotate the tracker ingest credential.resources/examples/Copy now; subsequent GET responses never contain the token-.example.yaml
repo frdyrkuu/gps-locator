@@ -1,0 +1,32 @@
+$kind: http-example
+name: Copy now; subsequent GET responses never contain the token.
+request:
+  url: "{{baseUrl}}/api/v1/trackers/:id/credentials"
+  method: POST
+  headers:
+    - key: authjs.session-token
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: id
+      value: string
+      disabled: false
+      description: (Required) Foreign-owner and nonexistent IDs both yield 404 for owner endpoints.
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    Cache-Control: no-store
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "token": "token-id.random-secret-shown-once"
+      }
+order: 1000
