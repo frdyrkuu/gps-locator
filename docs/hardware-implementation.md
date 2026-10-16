@@ -1,15 +1,71 @@
-# ESP32 offline GPS prototype
+# ESP32 cellular GPS tracker
 
-An ESP32 and GPS/GNSS receiver can obtain coordinates without Wi-Fi, a SIM, or
-internet. Offline recording requires firmware that stores those observations
-locally. Remote dashboard updates still require an internet connection.
+## Approved hardware direction
 
-This is a proposed prototype, not implemented or verified firmware. The wiring
+Use an **ESP32-based board with an LTE cellular modem and GPS/GNSS capability**,
+plus a SIM with a **15 GB no-expiry data plan**. Cellular data is the primary
+upload connection; operation away from home must not depend on Wi-Fi or a phone
+hotspot. The exact board, modem, carrier and plan are still to be selected.
+
+GPS/GNSS receives positioning signals from existing satellites without internet.
+The cellular modem sends those coordinates to the app over the carrier network.
+No private satellite service is needed for this design.
+
+```text
+Existing GPS/GNSS satellites
+             |
+             v
+GPS/GNSS receiver --> ESP32 --> LTE modem + SIM --> HTTPS API --> Dashboard
+                       |
+                       +--> Local queue while cellular data is unavailable
+```
+
+Start with an upload interval of **30 seconds**, matching the tracker settings in
+the app. The device initiates outbound HTTPS requests; the dashboard reads saved
+reports from the server. Direct inbound queries to the modem are not part of this
+design because mobile connections commonly use carrier NAT. On-demand commands
+would require a separate device command channel and are outside this prototype.
+
+### Board and connectivity requirements
+
+- Confirm the exact board includes GNSS, or add a separate compatible receiver;
+  an ESP32 board with a cellular modem does not automatically include GPS.
+- Match LTE bands and supported network technologies to the intended carrier.
+  Avoid assuming a cheap 2G-only modem will have usable service.
+- Include the correct LTE and GNSS antennas, a supported SIM, and the carrier's
+  APN configuration. Check HTTPS/certificate support in the modem and firmware.
+- Size the supply for the board's documented cellular transmit current peaks.
+  Use only its specified power input; a bare modem may require a different supply
+  voltage from an ESP32 DevKit. Follow the selected board's power/antenna design.
+- An integrated board's modem UART, power-enable and GNSS pins are board-specific.
+  Use its manufacturer schematic, not the GPIO16/17 example below, for those pins.
+
+### No-expiry data budget
+
+The approved starting allowance is **15 GB**. No-expiry data still requires an
+active SIM/account: verify carrier inactivity rules, coverage, modem/IoT usage
+terms and how the data allowance is consumed.
+
+Every 30 seconds means 2,880 uploads per day, or 86,400 in 30 days. For illustration
+only, a **measured total of 5–20 KB per upload** would use about **0.43–1.73 GB per
+30 days**, giving roughly **9–35 months** from 15 GB before other traffic. This is
+not a measured device budget: TLS handshakes, responses, reconnections and retries
+all contribute. Measure actual SIM usage for a week and extrapolate before relying
+on an allowance lifetime. Do not disable TLS verification to reduce consumption.
+
+## Offline behavior and optional Wi-Fi bench prototype
+
+Offline recording requires firmware that stores observations locally. Reports
+do not need to be sent immediately, but remote updates require an available
+communication link. Loss of cellular coverage or data must trigger local queuing,
+not a dependency on finding an unfamiliar Wi-Fi network.
+
+This is a proposed design, not implemented or verified firmware. The bench wiring
 below assumes a **classic ESP32-WROOM-32 DevKit** and a UART GPS breakout such as
 a NEO-6M. Verify the exact boards before connecting power: other ESP32 variants
 can have different pin assignments or reserved pins.
 
-## Parts
+### Optional Wi-Fi bench parts
 
 - Classic ESP32 DevKit.
 - UART GPS/GNSS breakout with antenna; a NEO-6M breakout is sufficient for an
@@ -21,7 +77,11 @@ Start with a small, bounded offline queue in ESP32 internal flash. An SD card is
 not necessary for the initial prototype; larger or longer recordings may justify
 additional storage later.
 
-## Wiring schematic
+### Optional Wi-Fi bench wiring schematic
+
+This earlier ESP32-plus-GPS setup can validate position parsing and API uploads
+over known Wi-Fi before the cellular board is available. It does not include LTE
+and is not the final vehicle installation schematic.
 
 **The power wiring below applies only to a GPS breakout explicitly rated for 5V
 input.** A bare NEO-6M receiver is not a 5V device. Some breakout boards include
@@ -57,7 +117,7 @@ TX connects to RX, and RX connects to TX. GPS RX can remain disconnected when
 only reading the receiver's default position output. Configure the firmware's
 UART pins and baud rate to match the board and receiver.
 
-### Electrical checks before powering
+### Electrical checks before powering the bench prototype
 
 - ESP32 GPIO uses **3.3V logic**. Confirm that GPS TX is compatible; if it outputs
   5V logic, use appropriate level shifting before the ESP32 RX pin. A regulator
@@ -83,7 +143,7 @@ ESP32 queues coordinates + GPS UTC observation time + messageId
          |
          +-- No internet --> retain observations locally
          |
-         +-- Wi-Fi returns --> upload queued observations over HTTPS
+         +-- Cellular data returns --> upload queued observations over HTTPS
                                       |
                                       v
                                Existing dashboard
@@ -101,6 +161,9 @@ The firmware must:
 5. Remove queued records only after acceptance or duplicate acknowledgement.
    Handle permanently invalid/expired records explicitly so they cannot block
    later uploads; respect rate limits and back off on transient failures.
+6. Reconnect to the cellular network using the selected modem's supported
+   interface and carrier APN. Bound retry frequency during coverage/data outages;
+   do not busy-loop modem reconnections or uploads.
 
 The current API accepts observations at most **seven days old** and at most
 **five minutes ahead** of server time. Older offline records need an explicit
@@ -125,22 +188,25 @@ Use `source: "ESP32"`, the correct `trackerId`, numeric coordinates, an ISO 8601
 [device setup](device-setup.md) for the payload and an HTTPS smoke test, and
 [architecture](../ARCHITECTURE.md) for the full contract.
 
-Start by verifying valid GPS readings locally, then test Wi-Fi uploads, then
-offline storage/reconnect behavior. This document does not supply firmware or
+Start by verifying valid GPS readings locally, then test cellular HTTPS uploads
+(or Wi-Fi for the optional bench setup), then offline storage/reconnect behavior.
+Confirm the latest position resumes reporting after an outage while older queued
+fixes enter history without moving the marker backward. This document does not supply firmware or
 establish that offline buffering is already implemented.
 
 ## Vehicle monitoring limits
 
 | Situation | Expected behavior with the planned firmware |
 | --- | --- |
-| No Wi-Fi, valid GPS reception | Record observations locally while powered |
-| Known Wi-Fi becomes available | Upload queued, still-acceptable observations |
-| Vehicle leaves all available internet connections | Dashboard retains the last uploaded position |
-| Cellular modem and SIM added later | Remote uploads become possible while coverage and data are available |
+| No Wi-Fi, cellular data available | Upload GPS fixes through LTE; Wi-Fi is unnecessary |
+| No cellular coverage or usable data, valid GPS reception | Record observations locally while powered |
+| Cellular data becomes available again | Resume current reporting and upload queued, still-acceptable observations |
+| No communication link | Dashboard retains the last uploaded position |
+| No valid GPS fix | Do not invent coordinates; retain the previous valid observation |
 
-Offline-only recording cannot provide remote anti-theft tracking when the vehicle
-is taken away from Wi-Fi. Cellular connectivity requires additional hardware,
-power capacity, and firmware work. Loss of power stops recording; an engineered
+Offline-only recording cannot provide remote anti-theft updates without any
+communication link. The approved LTE design removes the Wi-Fi dependency but
+still depends on carrier coverage and an active SIM/data allowance. Loss of power stops recording; an engineered
 backup supply can extend operation but is not included in this prototype.
 
 Before building, confirm the exact ESP32 board, GPS module, logic levels, supply
