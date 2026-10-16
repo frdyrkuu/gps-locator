@@ -110,7 +110,7 @@ export function Dashboard({ initialItems, initialTime, account }: { initialItems
       <TrackerHistory key={selected.id} trackerId={selected.id} onTrail={setTrail} />
     </section>}
     <TrackerManager selected={selected} refresh={refresh} />
-    <footer className="border-t pt-4">{account}</footer>
+    <footer className="border-t pt-4 md:hidden">{account}</footer>
   </div>;
 
   return <main className="flex h-dvh flex-col overflow-hidden bg-background md:flex-row">
@@ -120,6 +120,7 @@ export function Dashboard({ initialItems, initialTime, account }: { initialItems
       <Button size="icon" variant="secondary" aria-label="All things" onClick={() => { setCollapsed(false); setFilter("All"); setSearch(""); }}><Crosshair /></Button>
       <Button size="icon" variant="ghost" aria-label="Recently reporting things" onClick={() => { setCollapsed(false); setFilter("Recent"); }}><Radio /></Button>
       <Button size="icon" variant="ghost" aria-label={collapsed ? "Expand asset panel" : "Collapse asset panel"} onClick={() => setCollapsed(!collapsed)}>{collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</Button>
+      <div className="mt-auto w-full px-2">{account}</div>
     </nav>
     <aside className={`${collapsed ? "hidden" : "hidden md:block"} w-96 shrink-0 overflow-y-auto border-r bg-card`} aria-label="Asset panel">{panel}</aside>
     <header className="flex items-center justify-between gap-3 border-b bg-card p-3 md:hidden"><span className="flex items-center gap-2 font-semibold"><MapPin className="size-5 text-primary" />Your things</span><Button variant="outline" onClick={() => setMobileOpen(true)}>Search / details ({items.length})</Button></header>

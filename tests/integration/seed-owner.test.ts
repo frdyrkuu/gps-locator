@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
-import { loadEnvConfig } from "@next/env";
+import { useTestDatabase } from "./database";
 import { verify } from "@node-rs/argon2";
 import { readSeedSettings, seedOwner } from "../../lib/seed-owner";
 
-test("a migrated development database keeps exactly one owner and its original hash", async () => {
-  loadEnvConfig(process.cwd());
+test("a migrated disposable database keeps exactly one owner and its original hash", async (t) => {
+  if (!useTestDatabase(t)) return;
   const settings = readSeedSettings({
     SEED_OWNER_EMAIL: process.env.SEED_OWNER_EMAIL,
     SEED_OWNER_PASSWORD: process.env.SEED_OWNER_PASSWORD,

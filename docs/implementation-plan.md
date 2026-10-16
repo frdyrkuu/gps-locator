@@ -152,6 +152,19 @@ production build pass; interactive browser and real-device checks remain phase 5
 fix, see its true reporting age, inspect history, rotate the token, and delete
 the thing from a deployed private instance.
 
+Phase 5 verification tooling is implemented: production-mode Playwright HTTP/UI
+checks, expanded input-boundary tests, a client secret-literal scan, and isolated
+database-test gating. The suite covers auth/owner boundaries, device binding,
+token lifecycle, duplicate/delayed reports, bounded history, request/rate limits,
+sign-in/out, tracker forms, keyboard selection, mobile Sheet, phone-assisted
+wording, polling/recovery and tile/WebGL failures. It preserves the phase 4 map
+worker/sizing fixes and rejects malformed cron credentials without a server error.
+
+See [release verification](release.md) and [device setup](device-setup.md) for
+repeatable commands and smoke tests. Release remains pending until disposable-DB
+tests, deployed scheduler/tile-provider checks and actual deployment/device smoke
+tests are completed. Do not mark skipped integration tests as passed.
+
 ## After MVP
 
 Evaluate a native iOS/watchOS companion for independent and more regular

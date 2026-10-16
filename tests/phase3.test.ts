@@ -31,3 +31,17 @@ test("one-time token is high entropy, digest-only, and rejects malformed credent
   assert.equal(matchesDigest(tokenParts(`Bearer ${b.token}`)!.digest, a.tokenDigest), false);
   assert.equal(tokenParts(`Bearer ${a.token}oops`), null);
 });
+
+test("location and tracker ranges accept boundaries but reject out-of-range telemetry", () => {
+  const fix = { trackerId: "a", latitude: -90, longitude: 180, reportedAt: "2026-10-17T12:00:00Z", source: "ESP32",
+    accuracyMeters: 0, speedMps: 0, batteryPercent: 100 };
+  assert.equal(locationInput.safeParse(fix).success, true);
+  for (const change of [{ latitude: -90.1 }, { longitude: -180.1 }, { accuracyMeters: -1 }, { speedMps: -1 },
+    { batteryPercent: -1 }, { latitude: Infinity }, { reportedAt: "yesterday" }]) {
+    assert.equal(locationInput.safeParse({ ...fix, ...change }).success, false);
+  }
+  const tracker = { name: "Bike", type: "ESP32", reportingMode: "INTERVAL" };
+  for (const interval of [10, 86400]) assert.equal(trackerInput.safeParse({ ...tracker, expectedIntervalSeconds: interval }).success, true);
+  for (const interval of [9, 86401, 10.5]) assert.equal(trackerInput.safeParse({ ...tracker, expectedIntervalSeconds: interval }).success, false);
+  assert.equal(trackerInput.safeParse({ ...tracker, reportingMode: "ON_DEMAND", expectedIntervalSeconds: null }).success, true);
+});

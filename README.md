@@ -35,7 +35,7 @@ window, shared across server instances. A successful login clears the counter;
 stale counters are removed during subsequent login attempts. Invalid credentials
 and throttled requests show the same generic message.
 
-On a disposable development database, `npm run test:db` checks the seeded
+On a separate disposable database configured with `TEST_DATABASE_URL`, `npm run test:db` checks the seeded
 owner, verifies the Argon2id password, confirms repeat seeding and a different
 email cannot change the stored account, and exercises history/snapshot retention
 and tracker cascade deletion with a temporary tracker. It never prints the
@@ -98,3 +98,16 @@ npm run build
 The Postman spec lint above checks syntax locally; it does not run API behavior.
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for authentication, ingestion, history,
 and freshness semantics.
+
+## Verification and device setup
+
+Run `npm run check` for lint, typecheck, unit tests, production build and the client
+secret-literal check. Run `npx playwright install chromium` once, then
+`npm run test:e2e` for the production-mode browser/HTTP suite on port 3100. It creates
+temporary tracker fixtures in the configured database and cleans them up; it does
+not run successful global retention. Tests use placeholder tiles rather than
+repeatedly downloading public OSM tiles.
+
+See [release verification](docs/release.md) for test isolation, environment setup,
+deployment and scheduler checks, and [device setup](docs/device-setup.md) for exact
+iPhone Shortcut fields, an ESP32-shaped HTTPS smoke test, and error diagnosis.

@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { loadEnvConfig } from "@next/env";
+import { useTestDatabase } from "./database";
 
 test("phase 3 database lifecycle (requires disposable TEST_DATABASE_URL)", async (t) => {
-  loadEnvConfig(process.cwd());
-  if (!process.env.TEST_DATABASE_URL) return t.skip("set TEST_DATABASE_URL to a migrated disposable database");
-  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+  if (!useTestDatabase(t)) return;
   const { prisma } = await import("../../lib/db");
   const { rotateToken, revokeToken } = await import("../../lib/credential-store");
   const { tokenParts, matchesDigest } = await import("../../lib/device-token");

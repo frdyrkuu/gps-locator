@@ -7,6 +7,9 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Button } from "@/components/ui/button";
 import { accuracyRing, type HistoryPoint, type Tracker } from "@/lib/dashboard";
 
+// MapLibre's relative worker URL does not survive Next.js bundling.
+maplibregl.setWorkerUrl(new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).href);
+
 function fit(map: LibreMap, items: Tracker[]) {
   const bounds = new maplibregl.LngLatBounds();
   for (const { latestLocation: point } of items) if (point) bounds.extend([point.longitude, point.latitude]);
@@ -82,7 +85,7 @@ export default function TrackerMap({ items, selectedId, onSelect, trail }: { ite
   }, [trail, ready]);
 
   return <>
-    <div ref={container} className="absolute inset-0" aria-label="Interactive map of reported positions" />
+    <div ref={container} className="h-full w-full" aria-label="Interactive map of reported positions" />
     <Button variant="secondary" disabled={!ready || !items.some((item) => item.latestLocation)} className="absolute top-3 left-3 shadow-sm" onClick={() => { if (mapRef.current) fit(mapRef.current, items); }}>Fit all things</Button>
     {failed && <div role="status" className="absolute top-16 right-3 left-3 rounded-xl border bg-card p-4 text-sm shadow-sm md:left-auto md:max-w-sm">
       <p>Map unavailable or tiles failed. Your coordinates and reports are still available in the asset panel.</p>
